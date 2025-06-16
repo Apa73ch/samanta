@@ -1,5 +1,5 @@
 /* ============================================================================
-   APLICACIÓN PRINCIPAL - SISTEMA SAMANTA
+   APLICACIÓN PRINCIPAL - SISTEMA PUCMMTUB
    Vue.js Application para gestión de asistencia a charlas universitarias
 ============================================================================ */
 
@@ -1368,7 +1368,7 @@ const app = createApp({
       
       // Mostrar mensaje de bienvenida
       setTimeout(() => {
-        showInfo('¡Bienvenido al Sistema SAMANTA! 🎓', 3000);
+        showInfo('¡Bienvenido al Sistema PUCMMTUB! 🎓', 3000);
       }, 1000);
       
       // Enfocar automáticamente el input de escaneo si estamos en esa vista
@@ -1551,7 +1551,7 @@ app.component('status-badge', {
 
 // Inyectar estilos CSS específicos para los componentes de la aplicación
 const appStyles = `
-/* Estilos específicos para la aplicación Samanta */
+/* Estilos específicos para la aplicación PUCMMTUB */
 .header {
   background-color: var(--color-primary);
   color: var(--color-white);
@@ -1842,6 +1842,6 @@ window.SAMANTA_DEBUG = {
   }
 };
 
-console.log('🚀 Sistema Samanta iniciado correctamente');
+console.log('🚀 Sistema PUCMMTUB iniciado correctamente');
 console.log('🔧 Para debugging, usa: window.SAMANTA_DEBUG');
 console.log('📱 CDN Vue.js:', Vue.version || 'Versión no detectada'); 

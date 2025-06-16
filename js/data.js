@@ -506,7 +506,7 @@ const MOCK_COORDINATOR = {
 
 // Configuración del sistema
 const SYSTEM_CONFIG = {
-  appName: 'Samanta',
+  appName: 'PUCMMTUB',
   version: '1.0.0',
   university: 'Universidad Ejemplo',
   academicYear: '2024',
