@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samanta - Sistema de Asistencia a Charlas Universitarias</title>
+    <meta name="description" content="Sistema MVP para gestión de asistencia y control de charlas universitarias">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Contenedor principal de la aplicación Vue -->
+    <div id="app">
+        <!-- Pantalla de Login Mejorada - FASE 6 -->
+        <div v-if="currentRoute === 'login'" class="login-screen">
+            <div class="login-container">
+                <div class="login-header">
+                    <h1 class="login-title">{{ appName }}</h1>
+                    <p class="login-subtitle">Sistema de Asistencia a Charlas Universitarias</p>
+                </div>
+                
+                <!-- Indicador de carga global -->
+                <div v-if="isAnyLoading" class="loading-overlay">
+                    <div class="loading-spinner"></div>
+                    <p class="loading-text">{{ loadingMessage }}</p>
+                </div>
+                
+                <!-- Paso 1: Selección de Rol -->
+                <div v-if="!loginState.selectedRole" class="role-selection">
+                    <h3>Selecciona tu tipo de usuario</h3>
+                    <div class="role-options">
+                        <button 
+                            @click="selectRole('coordinator')"
+                            :disabled="loginState.isTransitioning"
+                            class="role-card"
+                            :class="{ 'role-card--loading': loginState.isTransitioning }"
+                        >
+                            <div class="role-icon icon icon-admin icon--2xl"></div>
+                            <h4 class="icon-with-text">
+                                <span class="icon icon-dashboard"></span>
+                                Coordinador
+                            </h4>
+                            <p>Gestionar charlas y registrar asistencia</p>
+                            <div v-if="loginState.isTransitioning" class="role-loading">
+                                <div class="spinner-small"></div>
+                            </div>
+                        </button>
+                        
+                        <button 
+                            @click="selectRole('student')"
+                            :disabled="loginState.isTransitioning"
+                            class="role-card"
+                            :class="{ 'role-card--loading': loginState.isTransitioning }"
+                        >
+                            <div class="role-icon icon icon-student icon--2xl"></div>
+                            <h4 class="icon-with-text">
+                                <span class="icon icon-progress"></span>
+                                Estudiante
+                            </h4>
+                            <p>Consultar progreso de charlas</p>
+                            <div v-if="loginState.isTransitioning" class="role-loading">
+                                <div class="spinner-small"></div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Paso 2: Login de Coordinador -->
+                <div v-if="loginState.selectedRole === 'coordinator'" class="login-form coordinator-login">
+                    <div class="login-form-header">
+                        <button @click="resetLoginState" class="back-button">← Volver</button>
+                        <div class="form-title">
+                            <div class="form-icon">👨‍💼</div>
+                            <h3>Acceso de Coordinador</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="login-form-content">
+                        <p class="form-description">
+                            Como coordinador tendrás acceso completo al sistema para gestionar charlas y registrar asistencia.
+                        </p>
+                        
+                        <div v-if="loginState.validationError" class="error-message">
+                            {{ loginState.validationError }}
+                        </div>
+                        
+                        <button 
+                            @click="loginAsCoordinator"
+                            :disabled="loginState.isTransitioning"
+                            class="button button--primary button--large login-submit"
+                        >
+                            <span v-if="!loginState.isTransitioning">Entrar como Coordinador</span>
+                            <span v-else class="button-loading">
+                                <div class="spinner-small"></div>
+                                Iniciando sesión...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Paso 3: Login de Estudiante -->
+                <div v-if="loginState.selectedRole === 'student'" class="login-form student-login">
+                    <div class="login-form-header">
+                        <button @click="resetLoginState" class="back-button">← Volver</button>
+                        <div class="form-title">
+                            <div class="form-icon">👨‍🎓</div>
+                            <h3>Acceso de Estudiante</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="login-form-content">
+                        <p class="form-description">
+                            Selecciona tu perfil para consultar tu progreso de charlas.
+                        </p>
+                        
+                        <div class="student-selector-enhanced">
+                            <label for="student-select">Seleccionar estudiante:</label>
+                            <select 
+                                id="student-select"
+                                v-model="selectedStudentCarnet" 
+                                @change="validateStudentSelection"
+                                class="select select--large"
+                                :class="{ 'select--error': loginState.validationError }"
+                            >
+                                <option value="">Seleccionar estudiante...</option>
+                                <option v-for="student in students" :key="student.id" :value="student.carnet">
+                                    {{ student.name }} ({{ student.carnet }}) - {{ student.career }}
+                                </option>
+                            </select>
+                            
+                            <div v-if="loginState.validationError" class="error-message">
+                                {{ loginState.validationError }}
+                            </div>
+                        </div>
+                        
+                        <button 
+                            @click="loginAsStudent" 
+                            :disabled="!selectedStudentCarnet || loginState.isTransitioning"
+                            class="button button--secondary button--large login-submit"
+                        >
+                            <span v-if="!loginState.isTransitioning">Entrar como Estudiante</span>
+                            <span v-else class="button-loading">
+                                <div class="spinner-small"></div>
+                                Cargando datos...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Botones de demostración rápida -->
+                <div v-if="!loginState.selectedRole" class="demo-buttons">
+                    <h4>Demostración Rápida:</h4>
+                    <div class="demo-grid">
+                        <button @click="quickLoginCoordinator" class="button button--outline">
+                            👨‍💼 Demo Coordinador
+                        </button>
+                        <button 
+                            v-for="student in demoStudents" 
+                            :key="student.carnet"
+                            @click="quickLoginStudent(student.carnet)"
+                            class="button button--outline"
+                        >
+                            👨‍🎓 {{ student.name }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aplicación Principal (cuando está logueado) -->
+        <div v-else class="app-main">
+            <header class="header">
+                <div class="container">
+                    <div class="header-content">
+                        <h1 class="app-title">{{ appName }}</h1>
+                        <div class="user-info">
+                            <span class="user-type">{{ currentUserType }}</span>
+                            <span class="user-name">{{ currentUserName }}</span>
+                            <button @click="logout" class="button button--ghost">
+                                Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                    <nav class="nav" v-if="currentUserRole === 'coordinator'">
+                        <button 
+                            v-for="view in coordinatorViews" 
+                            :key="view.id"
+                            @click="navigateTo(view.route)"
+                            :class="['nav-button', { 'nav-button--active': currentView === view.id }]"
+                        >
+                            {{ view.icon }} {{ view.name }}
+                        </button>
+                    </nav>
+                    <nav class="nav" v-else-if="currentUserRole === 'student'">
+                        <button 
+                            v-for="view in studentViews" 
+                            :key="view.id"
+                            @click="navigateTo(view.route)"
+                            :class="['nav-button', { 'nav-button--active': currentView === view.id }]"
+                        >
+                            {{ view.icon }} {{ view.name }}
+                        </button>
+                    </nav>
+                </div>
+            </header>
+
+        <main class="main">
+            <div class="container">
+                <!-- Vista Dashboard del Coordinador -->
+                <div v-if="currentView === 'dashboard' && currentUserRole === 'coordinator'" class="view">
+                    <div class="dashboard-header">
+                        <h2>Dashboard del Coordinador</h2>
+                        <div class="dashboard-actions">
+                            <button @click="openCreateTalkModal" class="button button--primary">
+                                ➕ Crear Nueva Charla
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Resumen Estadístico Específico -->
+                    <div class="coordinator-stats">
+                        <div class="stat-card stat-card--primary">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-content">
+                                <h3>Total Charlas</h3>
+                                <p class="stat-number">{{ talks.length }}</p>
+                                <span class="stat-detail">{{ completedTalks.length }} completadas</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card--success">
+                            <div class="stat-icon">✅</div>
+                            <div class="stat-content">
+                                <h3>Asistencias Hoy</h3>
+                                <p class="stat-number">{{ todayAttendanceCount }}</p>
+                                <span class="stat-detail">{{ currentAttendance.length }} en sesión actual</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card--info">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-content">
+                                <h3>Total Estudiantes</h3>
+                                <p class="stat-number">{{ students.length }}</p>
+                                <span class="stat-detail">{{ activeStudentsCount }} activos</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card--warning">
+                            <div class="stat-icon">📅</div>
+                            <div class="stat-content">
+                                <h3>Próximas Charlas</h3>
+                                <p class="stat-number">{{ upcomingTalks.length }}</p>
+                                <span class="stat-detail">Pendientes de realizar</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Búsqueda de Estudiantes -->
+                    <div class="search-section">
+                        <h3>Búsqueda de Estudiantes</h3>
+                        <div class="search-container">
+                            <div class="search-input-group">
+                                <input 
+                                    v-model="studentSearchQuery"
+                                    @input="searchStudents"
+                                    type="text" 
+                                    placeholder="Buscar por carnet, nombre o carrera..."
+                                    class="input search-input"
+                                    :class="{ 'input--loading': searchState.isSearching }"
+                                >
+                                <div v-if="searchState.isSearching" class="search-loading">
+                                    <div class="spinner-small"></div>
+                                </div>
+                                <button @click="clearSearch" class="button button--ghost search-clear">
+                                    ✖️
+                                </button>
+                            </div>
+                            
+                            <!-- Estados de búsqueda mejorados -->
+                            <div v-if="searchStatus === 'searching'" class="search-status searching">
+                                <div class="status-icon">🔍</div>
+                                <p>Buscando estudiantes...</p>
+                            </div>
+                            
+                            <div v-else-if="searchStatus === 'found'" class="search-results">
+                                <h4>Resultados de búsqueda ({{ searchResults.length }})</h4>
+                                <div class="search-results-list">
+                                    <div 
+                                        v-for="student in searchResults" 
+                                        :key="student.id"
+                                        class="search-result-item"
+                                    >
+                                        <div class="student-info-card">
+                                            <div class="student-basic">
+                                                <h5>{{ student.name }}</h5>
+                                                <p class="student-carnet">Carnet: {{ student.carnet }}</p>
+                                                <p class="student-career">{{ student.career }}</p>
+                                            </div>
+                                            <div class="student-progress">
+                                                <span :class="['badge', getStatusClass(student)]">
+                                                    {{ getStatusText(student) }}
+                                                </span>
+                                                <div class="progress-mini">
+                                                    <span class="progress-text">{{ student.completedTalks }}/{{ student.requiredTalks }}</span>
+                                                    <div class="progress-bar-mini">
+                                                        <div 
+                                                            class="progress-fill-mini"
+                                                            :style="{ width: getStudentProgress(student) + '%' }"
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-else-if="searchStatus === 'not-found'" class="search-no-results">
+                                <div class="no-results-message">
+                                    <span class="no-results-icon">🔍</span>
+                                    <h4>No se encontraron resultados</h4>
+                                    <p>No hay estudiantes que coincidan con "{{ studentSearchQuery }}"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Charlas con Estados -->
+                    <div class="talks-management">
+                        <h3>Gestión de Charlas</h3>
+                        <div class="talks-list-coordinator">
+                            <div 
+                                v-for="talk in talks" 
+                                :key="talk.id" 
+                                class="talk-card-coordinator"
+                                :class="'talk-card--' + talk.status"
+                            >
+                                <div class="talk-header">
+                                    <div class="talk-title-section">
+                                        <h4>{{ talk.title }}</h4>
+                                        <span :class="['talk-status-badge', 'status--' + talk.status]">
+                                            {{ talk.status === 'completed' ? '✅ Completada' : '📅 Próxima' }}
+                                        </span>
+                                    </div>
+                                    <div class="talk-actions">
+                                        <button 
+                                            v-if="talk.status === 'upcoming'"
+                                            @click="startTalkAttendance(talk)"
+                                            class="button button--primary button--small"
+                                        >
+                                            📱 Tomar Asistencia
+                                        </button>
+                                        <button 
+                                            @click="viewTalkDetails(talk)"
+                                            class="button button--secondary button--small"
+                                        >
+                                            👁️ Ver Detalles
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="talk-info">
+                                    <div class="talk-details">
+                                        <p><strong>📅 Fecha:</strong> {{ formatDate(talk.date) }}</p>
+                                        <p><strong>🕐 Hora:</strong> {{ talk.time }}</p>
+                                        <p><strong>📍 Lugar:</strong> {{ talk.location }}</p>
+                                        <p><strong>👨‍🏫 Ponente:</strong> {{ talk.speaker }}</p>
+                                    </div>
+                                    <div class="talk-stats-coordinator">
+                                        <div class="stat-item">
+                                            <span class="stat-label">Asistentes</span>
+                                            <span class="stat-value">{{ talk.attendees }}/{{ talk.capacity }}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Ocupación</span>
+                                            <span class="stat-value">{{ Math.round((talk.attendees / talk.capacity) * 100) }}%</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Valor</span>
+                                            <span class="stat-value">{{ talk.value }} charla{{ talk.value > 1 ? 's' : '' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vista Estudiantes -->
+                <div v-if="currentView === 'students'" class="view">
+                    <h2>Estudiantes</h2>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Carnet</th>
+                                    <th>Nombre</th>
+                                    <th>Carrera</th>
+                                    <th>Charlas Completadas</th>
+                                    <th>Charlas Requeridas</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="student in students" :key="student.id">
+                                    <td>{{ student.carnet }}</td>
+                                    <td>{{ student.name }}</td>
+                                    <td>{{ student.career }}</td>
+                                    <td>{{ student.completedTalks }}</td>
+                                    <td>{{ student.requiredTalks }}</td>
+                                    <td>
+                                        <span :class="['status-badge', getStatusClass(student)]">
+                                            {{ getStatusText(student) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Vista Charlas -->
+                <div v-if="currentView === 'talks'" class="view">
+                    <h2>Gestión de Charlas</h2>
+                    <div class="talks-grid">
+                        <div v-for="talk in talks" :key="talk.id" class="talk-card">
+                            <div class="talk-header">
+                                <div class="talk-title-section">
+                                    <h3>{{ talk.title }}</h3>
+                                    <span :class="['talk-status-badge', 'status--' + talk.status]">
+                                        {{ talk.status === 'completed' ? '✅ Completada' : '📅 Próxima' }}
+                                    </span>
+                                </div>
+                                <div class="talk-actions">
+                                    <button 
+                                        v-if="talk.status === 'upcoming'"
+                                        @click="startTalkAttendance(talk)"
+                                        class="button button--primary button--small"
+                                    >
+                                        📱 Tomar Asistencia
+                                    </button>
+                                    <button 
+                                        @click="viewTalkDetails(talk)"
+                                        class="button button--secondary button--small"
+                                    >
+                                        👁️ Ver Detalles
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="talk-info">
+                                <div class="talk-details">
+                                    <p><strong>📅 Fecha:</strong> {{ formatDate(talk.date) }}</p>
+                                    <p><strong>🕐 Hora:</strong> {{ talk.time }}</p>
+                                    <p><strong>📍 Lugar:</strong> {{ talk.location }}</p>
+                                    <p><strong>👨‍🏫 Ponente:</strong> {{ talk.speaker }}</p>
+                                </div>
+                                <div class="talk-stats-coordinator">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Asistentes</span>
+                                        <span class="stat-value">{{ talk.attendees }}/{{ talk.capacity }}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Ocupación</span>
+                                        <span class="stat-value">{{ Math.round((talk.attendees / talk.capacity) * 100) }}%</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Valor</span>
+                                        <span class="stat-value">{{ talk.value }} charla{{ talk.value > 1 ? 's' : '' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vista Escaneo -->
+                <div v-if="currentView === 'scan'" class="view">
+                    <h2>Escaneo de Carnets</h2>
+                    <div class="scan-section">
+                        <div class="scan-input">
+                            <label for="carnet-input">Carnet del Estudiante:</label>
+                            <input 
+                                id="carnet-input"
+                                v-model="scanInput" 
+                                type="text" 
+                                placeholder="Escanee o ingrese el carnet"
+                                @keyup.enter="processCarnet"
+                                class="input"
+                            >
+                            <button @click="processCarnet" class="button button--primary">
+                                Registrar Asistencia
+                            </button>
+                        </div>
+                        
+                        <div v-if="scanResult" class="scan-result" :class="scanResult.type">
+                            <p>{{ scanResult.message }}</p>
+                        </div>
+
+                        <div class="current-attendance">
+                            <h3>Asistencia Actual</h3>
+                            <ul v-if="currentAttendance.length > 0">
+                                <li v-for="attendance in currentAttendance" :key="attendance.carnet">
+                                    {{ attendance.name }} ({{ attendance.carnet }}) - {{ attendance.career }}
+                                </li>
+                            </ul>
+                            <p v-else class="text-muted">No hay asistencias registradas aún</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vista Dashboard del Estudiante - FASE 5 -->
+                <div v-if="currentView === 'progress' && currentUser && currentUserRole === 'student'" class="view">
+                    <div class="student-dashboard">
+                        <!-- Paso 5.1: Vista Principal del Estudiante -->
+                        <div class="student-main-info">
+                            <div class="student-profile-card">
+                                <div class="profile-avatar">
+                                    <span class="avatar-icon">👤</span>
+                                </div>
+                                <div class="profile-info">
+                                    <h2 class="student-name">{{ currentUser.name }}</h2>
+                                    <div class="student-details-enhanced">
+                                        <div class="detail-item">
+                                            <span class="detail-icon">🎓</span>
+                                            <span class="detail-text">{{ currentUser.career }}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-icon">🆔</span>
+                                            <span class="detail-text">{{ currentUser.carnet }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="profile-status">
+                                    <span :class="['status-badge-large', getStatusClass(currentUser)]">
+                                        {{ getStatusText(currentUser) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progreso Visual Mejorado -->
+                        <div class="progress-section-enhanced">
+                            <div class="progress-header-enhanced">
+                                <h3>Mi Progreso Académico</h3>
+                                <div class="progress-summary">
+                                    <span class="progress-counter">
+                                        {{ currentUser.completedTalks }} de {{ currentUser.requiredTalks }} charlas
+                                    </span>
+                                    <span class="progress-percentage-large">{{ getStudentProgress(currentUser) }}%</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Barra de Progreso Animada -->
+                            <div class="progress-bar-enhanced">
+                                <div class="progress-track">
+                                    <div 
+                                        class="progress-fill-animated" 
+                                        :style="{ width: getStudentProgress(currentUser) + '%' }"
+                                        :class="getProgressColorClass(currentUser)"
+                                    >
+                                        <div class="progress-shine"></div>
+                                    </div>
+                                </div>
+                                <div class="progress-markers">
+                                    <div class="marker" :class="{ active: getStudentProgress(currentUser) >= 25 }">25%</div>
+                                    <div class="marker" :class="{ active: getStudentProgress(currentUser) >= 50 }">50%</div>
+                                    <div class="marker" :class="{ active: getStudentProgress(currentUser) >= 75 }">75%</div>
+                                    <div class="marker" :class="{ active: getStudentProgress(currentUser) >= 100 }">100%</div>
+                                </div>
+                            </div>
+
+                            <!-- Estadísticas Mejoradas -->
+                            <div class="student-stats-grid">
+                                <div class="stat-card-student stat-card--completed">
+                                    <div class="stat-icon-large">✅</div>
+                                    <div class="stat-content-student">
+                                        <div class="stat-number-large">{{ currentUser.completedTalks }}</div>
+                                        <div class="stat-label-student">Completadas</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card-student stat-card--required">
+                                    <div class="stat-icon-large">🎯</div>
+                                    <div class="stat-content-student">
+                                        <div class="stat-number-large">{{ currentUser.requiredTalks }}</div>
+                                        <div class="stat-label-student">Requeridas</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card-student stat-card--remaining">
+                                    <div class="stat-icon-large">⏳</div>
+                                    <div class="stat-content-student">
+                                        <div class="stat-number-large">{{ Math.max(0, currentUser.requiredTalks - currentUser.completedTalks) }}</div>
+                                        <div class="stat-label-student">Restantes</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card-student stat-card--progress">
+                                    <div class="stat-icon-large">📊</div>
+                                    <div class="stat-content-student">
+                                        <div class="stat-number-large">{{ getStudentProgress(currentUser) }}%</div>
+                                        <div class="stat-label-student">Progreso</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Navegación de Secciones -->
+                        <div class="student-navigation">
+                            <button 
+                                @click="setStudentSection('historial')"
+                                :class="['nav-button', { active: currentStudentSection === 'historial' }]"
+                                :disabled="loadingStates.loadingStudentData"
+                            >
+                                📚 Historial de Charlas
+                                <div v-if="loadingStates.loadingStudentData && currentStudentSection === 'historial'" class="spinner-small"></div>
+                            </button>
+                            <button 
+                                @click="setStudentSection('proximas')"
+                                :class="['nav-button', { active: currentStudentSection === 'proximas' }]"
+                                :disabled="loadingStates.loadingStudentData"
+                            >
+                                📅 Próximas Charlas
+                                <div v-if="loadingStates.loadingStudentData && currentStudentSection === 'proximas'" class="spinner-small"></div>
+                            </button>
+                        </div>
+
+                        <!-- Paso 5.2: Historial de Charlas -->
+                        <div v-if="currentStudentSection === 'historial'" class="student-section" :class="{ loading: loadingStates.loadingStudentData }">
+                            <div class="section-header">
+                                <h3>📚 Historial de Charlas Asistidas</h3>
+                                <div class="section-summary">
+                                    <span class="summary-text">{{ getAttendedTalksOrdered().length }} charlas completadas</span>
+                                </div>
+                            </div>
+                            
+                            <div v-if="getAttendedTalksOrdered().length > 0" class="talks-history">
+                                <div 
+                                    v-for="talk in getAttendedTalksOrdered()" 
+                                    :key="talk.id"
+                                    class="history-talk-card"
+                                >
+                                    <div class="talk-card-header">
+                                        <div class="talk-status-indicator completed">✅</div>
+                                        <div class="talk-main-info">
+                                            <h4 class="talk-title">{{ talk.title }}</h4>
+                                            <p class="talk-speaker">👨‍🏫 {{ talk.speaker }}</p>
+                                        </div>
+                                        <div class="talk-value-badge">
+                                            +{{ talk.value }} charla{{ talk.value > 1 ? 's' : '' }}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="talk-card-details">
+                                        <div class="detail-row">
+                                            <div class="detail-group">
+                                                <span class="detail-icon">📅</span>
+                                                <span class="detail-text">{{ formatDate(talk.date) }}</span>
+                                            </div>
+                                            <div class="detail-group">
+                                                <span class="detail-icon">🕐</span>
+                                                <span class="detail-text">{{ talk.time }}</span>
+                                            </div>
+                                            <div class="detail-group">
+                                                <span class="detail-icon">📍</span>
+                                                <span class="detail-text">{{ talk.location }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div v-if="talk.description" class="talk-description">
+                                            <p>{{ talk.description }}</p>
+                                        </div>
+                                        
+                                        <div class="talk-metadata">
+                                            <span class="metadata-item">
+                                                <span class="metadata-icon">🏷️</span>
+                                                {{ talk.category }}
+                                            </span>
+                                            <span class="metadata-item">
+                                                <span class="metadata-icon">⏱️</span>
+                                                {{ talk.duration }} min
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-else class="empty-state">
+                                <div class="empty-icon">📚</div>
+                                <h4>No has asistido a ninguna charla aún</h4>
+                                <p>Cuando asistas a tu primera charla, aparecerá aquí en tu historial.</p>
+                            </div>
+                        </div>
+
+                        <!-- Paso 5.3: Próximas Charlas -->
+                        <div v-if="currentStudentSection === 'proximas'" class="student-section" :class="{ loading: loadingStates.loadingStudentData }">
+                            <div class="section-header">
+                                <h3>📅 Próximas Charlas Disponibles</h3>
+                                <div class="section-summary">
+                                    <span class="summary-text">{{ getUpcomingTalksForStudent().length }} charlas programadas</span>
+                                </div>
+                            </div>
+                            
+                            <div v-if="getUpcomingTalksForStudent().length > 0" class="upcoming-talks">
+                                <div 
+                                    v-for="talk in getUpcomingTalksForStudent()" 
+                                    :key="talk.id"
+                                    class="upcoming-talk-card"
+                                    :class="{ 'already-attended': hasAttendedTalk(talk.id) }"
+                                >
+                                    <div class="talk-card-header">
+                                        <div class="talk-status-indicator" :class="getUpcomingTalkStatus(talk.id)">
+                                            {{ getUpcomingTalkIcon(talk.id) }}
+                                        </div>
+                                        <div class="talk-main-info">
+                                            <h4 class="talk-title">{{ talk.title }}</h4>
+                                            <p class="talk-speaker">👨‍🏫 {{ talk.speaker }}</p>
+                                        </div>
+                                        <div class="talk-value-badge upcoming">
+                                            +{{ talk.value }} charla{{ talk.value > 1 ? 's' : '' }}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="talk-card-details">
+                                        <div class="detail-row">
+                                            <div class="detail-group">
+                                                <span class="detail-icon">📅</span>
+                                                <span class="detail-text">{{ formatDate(talk.date) }}</span>
+                                            </div>
+                                            <div class="detail-group">
+                                                <span class="detail-icon">🕐</span>
+                                                <span class="detail-text">{{ talk.time }}</span>
+                                            </div>
+                                            <div class="detail-group">
+                                                <span class="detail-icon">📍</span>
+                                                <span class="detail-text">{{ talk.location }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div v-if="talk.description" class="talk-description">
+                                            <p>{{ talk.description }}</p>
+                                        </div>
+                                        
+                                        <div class="talk-metadata">
+                                            <span class="metadata-item">
+                                                <span class="metadata-icon">🏷️</span>
+                                                {{ talk.category }}
+                                            </span>
+                                            <span class="metadata-item">
+                                                <span class="metadata-icon">⏱️</span>
+                                                {{ talk.duration }} min
+                                            </span>
+                                            <span class="metadata-item">
+                                                <span class="metadata-icon">👥</span>
+                                                {{ talk.attendees }}/{{ talk.capacity }}
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="talk-status-message">
+                                            <span v-if="hasAttendedTalk(talk.id)" class="status-message attended">
+                                                ✅ Ya asististe a esta charla
+                                            </span>
+                                            <span v-else-if="talk.attendees >= talk.capacity" class="status-message full">
+                                                🚫 Charla llena - Sin cupos disponibles
+                                            </span>
+                                            <span v-else class="status-message available">
+                                                ✨ Disponible para asistir
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-else class="empty-state">
+                                <div class="empty-icon">📅</div>
+                                <h4>No hay charlas próximas programadas</h4>
+                                <p>Mantente atento a las próximas charlas que se programen.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Modal para Crear Nueva Charla -->
+        <div v-if="showCreateTalkModal" class="modal-overlay" @click="closeCreateTalkModal">
+            <div class="modal-content" @click.stop>
+                <div class="modal-header">
+                    <h3>Crear Nueva Charla</h3>
+                    <button @click="closeCreateTalkModal" class="modal-close">✖️</button>
+                </div>
+                
+                <form @submit.prevent="createNewTalk" class="modal-form">
+                    <div class="form-group">
+                        <label for="talk-title">Nombre de la Charla *</label>
+                        <input 
+                            id="talk-title"
+                            v-model="newTalk.title"
+                            type="text" 
+                            placeholder="Ej: Inteligencia Artificial en la Medicina"
+                            class="input"
+                            required
+                        >
+                        <span v-if="formErrors.title" class="error-message">{{ formErrors.title }}</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="talk-date">Fecha *</label>
+                            <input 
+                                id="talk-date"
+                                v-model="newTalk.date"
+                                type="date" 
+                                class="input"
+                                required
+                            >
+                            <span v-if="formErrors.date" class="error-message">{{ formErrors.date }}</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="talk-time">Hora *</label>
+                            <input 
+                                id="talk-time"
+                                v-model="newTalk.time"
+                                type="time" 
+                                class="input"
+                                required
+                            >
+                            <span v-if="formErrors.time" class="error-message">{{ formErrors.time }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="talk-location">Lugar/Ubicación *</label>
+                        <input 
+                            id="talk-location"
+                            v-model="newTalk.location"
+                            type="text" 
+                            placeholder="Ej: Auditorio Principal, Sala 201"
+                            class="input"
+                            required
+                        >
+                        <span v-if="formErrors.location" class="error-message">{{ formErrors.location }}</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="talk-speaker">Ponente *</label>
+                        <input 
+                            id="talk-speaker"
+                            v-model="newTalk.speaker"
+                            type="text" 
+                            placeholder="Ej: Dr. María Elena Vásquez"
+                            class="input"
+                            required
+                        >
+                        <span v-if="formErrors.speaker" class="error-message">{{ formErrors.speaker }}</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="talk-capacity">Capacidad *</label>
+                            <input 
+                                id="talk-capacity"
+                                v-model.number="newTalk.capacity"
+                                type="number" 
+                                min="1"
+                                max="1000"
+                                placeholder="150"
+                                class="input"
+                                required
+                            >
+                            <span v-if="formErrors.capacity" class="error-message">{{ formErrors.capacity }}</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="talk-value">Valor en Charlas *</label>
+                            <select 
+                                id="talk-value"
+                                v-model.number="newTalk.value"
+                                class="select"
+                                required
+                            >
+                                <option value="1">1 charla</option>
+                                <option value="2">2 charlas</option>
+                                <option value="3">3 charlas</option>
+                            </select>
+                            <span v-if="formErrors.value" class="error-message">{{ formErrors.value }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="talk-description">Descripción</label>
+                        <textarea 
+                            id="talk-description"
+                            v-model="newTalk.description"
+                            placeholder="Descripción breve de la charla..."
+                            class="textarea"
+                            rows="3"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="talk-category">Categoría</label>
+                        <select 
+                            id="talk-category"
+                            v-model="newTalk.category"
+                            class="select"
+                        >
+                            <option value="Tecnología">Tecnología</option>
+                            <option value="Medicina">Medicina</option>
+                            <option value="Educación">Educación</option>
+                            <option value="Emprendimiento">Emprendimiento</option>
+                            <option value="Medio Ambiente">Medio Ambiente</option>
+                            <option value="Ética">Ética</option>
+                            <option value="Liderazgo">Liderazgo</option>
+                            <option value="Investigación">Investigación</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" @click="closeCreateTalkModal" class="button button--secondary">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="button button--primary" :disabled="isCreatingTalk">
+                            {{ isCreatingTalk ? 'Creando...' : 'Crear Charla' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal para Detalles de Charla -->
+        <div v-if="showTalkDetailsModal" class="modal-overlay" @click="closeTalkDetailsModal">
+            <div class="modal-content modal-content--large" @click.stop>
+                <div class="modal-header">
+                    <h3>{{ selectedTalk?.title }}</h3>
+                    <button @click="closeTalkDetailsModal" class="modal-close">✖️</button>
+                </div>
+                
+                <!-- Acciones de la Charla -->
+                <div v-if="selectedTalk" class="modal-actions" style="border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-4); margin-bottom: var(--space-4);">
+                    <button 
+                        v-if="selectedTalk.status === 'upcoming'"
+                        @click="startTalkAttendance(selectedTalk); closeTalkDetailsModal();"
+                        class="button button--primary"
+                    >
+                        📱 Registrar Asistencia
+                    </button>
+                    <button 
+                        v-if="selectedTalk.status === 'completed'"
+                        @click="startTalkAttendance(selectedTalk); closeTalkDetailsModal();"
+                        class="button button--secondary"
+                    >
+                        📊 Ver Asistencias
+                    </button>
+                    <span :class="['talk-status-badge', 'status--' + selectedTalk.status]">
+                        {{ selectedTalk.status === 'completed' ? '✅ Completada' : '📅 Próxima' }}
+                    </span>
+                </div>
+                
+                <div v-if="selectedTalk" class="talk-details-content">
+                    <div class="talk-info-detailed">
+                        <div class="info-section">
+                            <h4>Información General</h4>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">📅 Fecha:</span>
+                                    <span class="info-value">{{ formatDate(selectedTalk.date) }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">🕐 Hora:</span>
+                                    <span class="info-value">{{ selectedTalk.time }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">📍 Lugar:</span>
+                                    <span class="info-value">{{ selectedTalk.location }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">👨‍🏫 Ponente:</span>
+                                    <span class="info-value">{{ selectedTalk.speaker }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">👥 Capacidad:</span>
+                                    <span class="info-value">{{ selectedTalk.capacity }} personas</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">⭐ Valor:</span>
+                                    <span class="info-value">{{ selectedTalk.value }} charla{{ selectedTalk.value > 1 ? 's' : '' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-section" v-if="selectedTalk.description">
+                            <h4>Descripción</h4>
+                            <p class="talk-description">{{ selectedTalk.description }}</p>
+                        </div>
+                        
+                        <div class="info-section">
+                            <h4>Estadísticas de Asistencia</h4>
+                            <div class="attendance-stats">
+                                <div class="attendance-chart">
+                                    <div class="chart-bar">
+                                        <div 
+                                            class="chart-fill"
+                                            :style="{ width: Math.round((selectedTalk.attendees / selectedTalk.capacity) * 100) + '%' }"
+                                        ></div>
+                                    </div>
+                                    <div class="chart-labels">
+                                        <span>{{ selectedTalk.attendees }} asistentes</span>
+                                        <span>{{ selectedTalk.capacity - selectedTalk.attendees }} disponibles</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-section" v-if="selectedTalk.status === 'completed'">
+                            <h4>Lista de Asistentes</h4>
+                            <div class="attendees-list">
+                                <div 
+                                    v-for="studentId in getAttendeesByTalk(selectedTalk.id)" 
+                                    :key="studentId"
+                                    class="attendee-item"
+                                >
+                                    <div v-if="students.find(s => s.attendedTalks.includes(selectedTalk.id) && s.id === studentId)" class="attendee-info">
+                                        <span class="attendee-name">{{ students.find(s => s.id === studentId)?.name }}</span>
+                                        <span class="attendee-carnet">{{ students.find(s => s.id === studentId)?.carnet }}</span>
+                                        <span class="attendee-career">{{ students.find(s => s.id === studentId)?.career }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <footer class="footer">
+                <div class="container">
+                    <p>&copy; 2024 Samanta - Sistema de Asistencia Universitaria</p>
+                </div>
+            </footer>
+        </div>
+        
+        <!-- Sistema de Notificaciones Toast - FASE 7 -->
+        <div class="toast-container">
+            <transition-group name="toast" tag="div">
+                <div 
+                    v-for="notification in notifications" 
+                    :key="notification.id"
+                    :class="['toast', `toast--${notification.type}`, { 'toast--visible': notification.isVisible }]"
+                    @click="removeNotification(notification.id)"
+                >
+                    <div class="toast-icon">
+                        <span v-if="notification.type === 'success'">✅</span>
+                        <span v-else-if="notification.type === 'error'">❌</span>
+                        <span v-else-if="notification.type === 'warning'">⚠️</span>
+                        <span v-else>ℹ️</span>
+                    </div>
+                    <div class="toast-content">
+                        <p class="toast-message">{{ notification.message }}</p>
+                        <small class="toast-time">{{ new Date(notification.timestamp).toLocaleTimeString() }}</small>
+                    </div>
+                    <button class="toast-close" @click.stop="removeNotification(notification.id)">
+                        ✖️
+                    </button>
+                </div>
+            </transition-group>
+        </div>
+        
+        <!-- Panel de Control de Persistencia - FASE 7 -->
+        <div class="persistence-panel">
+            <button @click="saveAppState" class="persistence-btn save-btn" title="Guardar Estado">
+                💾
+            </button>
+            <button @click="resetAppData" class="persistence-btn reset-btn" title="Resetear Aplicación">
+                🔄
+            </button>
+            <div v-if="persistenceState.lastSaved" class="persistence-info">
+                <small>Último guardado: {{ new Date(persistenceState.lastSaved).toLocaleTimeString() }}</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue.js 3.5.16 CDN -->
+    <script src="https://unpkg.com/vue@3.5.16/dist/vue.global.js"></script>
+    
+    <!-- Datos mockeados -->
+    <script src="js/data.js"></script>
+    
+    <!-- Aplicación principal -->
+    <script src="js/app.js"></script>
+</body>
+</html> 
