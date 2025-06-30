@@ -6,7 +6,7 @@
 
 ## 📋 Descripción
 
-**PUCMMTUB** es un sistema MVP (Producto Mínimo Viable) para la gestión de asistencia y control de charlas universitarias. Permite a las instituciones educativas llevar un registro digital de la asistencia de estudiantes a eventos académicos como conferencias, tertulias, foros y seminarios.
+**PUCMMTUBE** es un sistema MVP (Producto Mínimo Viable) para la gestión de asistencia y control de charlas universitarias. Permite a las instituciones educativas llevar un registro digital de la asistencia de estudiantes a eventos académicos como conferencias, tertulias, foros y seminarios.
 
 ### Características Principales
 
@@ -241,7 +241,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 ## 📞 Soporte
 
 Para soporte técnico o preguntas:
-- 📧 Email: soporte@PUCMMTUB-system.com
+- 📧 Email: soporte@PUCMMTUBE-system.com
 - 💬 Issues: [GitHub Issues](URL_ISSUES)
 - 📚 Documentación: [Wiki del Proyecto](URL_WIKI)
 
