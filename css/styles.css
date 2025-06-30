@@ -1785,12 +1785,12 @@ a:hover {
   box-shadow: var(--shadow-sm);
 }
 
-.nav-button {
+.student-navigation .nav-button {
   flex: 1;
   padding: var(--space-4) var(--space-6);
   border: 2px solid var(--color-border);
-  background: var(--color-white);
-  color: var(--color-text-muted);
+  background: var(--color-gray-50);
+  color: var(--color-text);
   border-radius: var(--border-radius-md);
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-base);
@@ -1799,13 +1799,13 @@ a:hover {
   text-align: center;
 }
 
-.nav-button:hover {
+.student-navigation .nav-button:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: var(--color-primary-light);
 }
 
-.nav-button.active {
+.student-navigation .nav-button.active {
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: white;
