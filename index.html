@@ -326,10 +326,20 @@
 
                     <!-- Lista de Charlas con Estados -->
                     <div class="talks-management">
-                        <h3>Gestión de Charlas</h3>
+                        <div class="section-header">
+                            <h3>Gestión de Charlas</h3>
+                            <div class="search-input-group">
+                                <input 
+                                    type="text"
+                                    v-model="talkSearchQuery"
+                                    placeholder="🔍 Buscar charlas..."
+                                    class="input"
+                                >
+                            </div>
+                        </div>
                         <div class="talks-list-coordinator">
                             <div 
-                                v-for="talk in talks" 
+                                v-for="talk in filteredTalks" 
                                 :key="talk.id" 
                                 class="talk-card-coordinator"
                                 :class="'talk-card--' + talk.status"
@@ -420,9 +430,19 @@
 
                 <!-- Vista Charlas -->
                 <div v-if="currentView === 'talks'" class="view">
-                    <h2>Gestión de Charlas</h2>
+                    <div class="section-header">
+                        <h2>Gestión de Charlas</h2>
+                        <div class="search-input-group">
+                            <input 
+                                type="text"
+                                v-model="talkSearchQuery"
+                                placeholder="🔍 Buscar charlas..."
+                                class="input"
+                            >
+                        </div>
+                    </div>
                     <div class="talks-grid">
-                        <div v-for="talk in talks" :key="talk.id" class="talk-card">
+                        <div v-for="talk in filteredTalks" :key="talk.id" class="talk-card">
                             <div class="talk-header">
                                 <div class="talk-title-section">
                                     <h3>{{ talk.title }}</h3>
@@ -692,9 +712,19 @@
                         <!-- Paso 5.3: Próximas Charlas -->
                         <div v-if="currentStudentSection === 'proximas'" class="student-section" :class="{ loading: loadingStates.loadingStudentData }">
                             <div class="section-header">
-                                <h3>📅 Próximas Charlas Disponibles</h3>
-                                <div class="section-summary">
-                                    <span class="summary-text">{{ getUpcomingTalksForStudent().length }} charlas programadas</span>
+                                <div class="header-main">
+                                    <h3>📅 Próximas Charlas Disponibles</h3>
+                                    <div class="section-summary">
+                                        <span class="summary-text">{{ getUpcomingTalksForStudent().length }} charlas programadas</span>
+                                    </div>
+                                </div>
+                                <div class="search-input-group">
+                                    <input 
+                                        type="text"
+                                        v-model="talkSearchQuery"
+                                        placeholder="🔍 Buscar charlas..."
+                                        class="input"
+                                    >
                                 </div>
                             </div>
                             

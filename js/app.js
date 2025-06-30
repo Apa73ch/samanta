@@ -34,8 +34,9 @@ const app = createApp({
     
     // === ESTADO ESPECÍFICO FASE 4: DASHBOARD DEL COORDINADOR ===
     
-    // Estado para búsqueda de estudiantes
+    // Estado para búsqueda de estudiantes y charlas
     const studentSearchQuery = ref('');
+    const talkSearchQuery = ref('');
     const searchResults = ref([]);
     
     // Estado para crear nueva charla
@@ -176,6 +177,20 @@ const app = createApp({
       return window.MOCK_DATA.getUpcomingTalks();
     });
     
+    // Charlas filtradas por búsqueda
+    const filteredTalks = computed(() => {
+      if (!talkSearchQuery.value) return talks.value;
+      
+      const searchTerm = talkSearchQuery.value.toLowerCase();
+      return talks.value.filter(talk => 
+        talk.title.toLowerCase().includes(searchTerm) ||
+        talk.speaker.toLowerCase().includes(searchTerm) ||
+        talk.location.toLowerCase().includes(searchTerm) ||
+        talk.time.toLowerCase().includes(searchTerm) ||
+        formatDate(talk.date).toLowerCase().includes(searchTerm)
+      );
+    });
+
     // Estudiantes por estado
     const studentsByStatus = computed(() => {
       const statusCounts = {
@@ -256,6 +271,7 @@ const app = createApp({
           currentView.value = 'progress';
         } else if (hash === '#estudiante/charlas') {
           currentView.value = 'talks';
+          currentStudentSection.value = 'proximas';
         }
         
         // Extraer carnet de la ruta si está presente
@@ -905,8 +921,22 @@ const app = createApp({
      
      // Obtener charlas próximas para el estudiante
      const getUpcomingTalksForStudent = () => {
-       return window.MOCK_DATA.getUpcomingTalks()
+       let upcomingTalks = window.MOCK_DATA.getUpcomingTalks()
          .sort((a, b) => new Date(a.date) - new Date(b.date)); // Ordenar por fecha ascendente
+
+       // Filtrar por búsqueda si hay un término
+       if (talkSearchQuery.value) {
+         const searchTerm = talkSearchQuery.value.toLowerCase();
+         upcomingTalks = upcomingTalks.filter(talk => 
+           talk.title.toLowerCase().includes(searchTerm) ||
+           talk.speaker.toLowerCase().includes(searchTerm) ||
+           talk.location.toLowerCase().includes(searchTerm) ||
+           talk.description?.toLowerCase().includes(searchTerm) ||
+           talk.category?.toLowerCase().includes(searchTerm)
+         );
+       }
+
+       return upcomingTalks;
      };
      
      // Verificar si el estudiante ya asistió a una charla
@@ -1423,7 +1453,9 @@ const app = createApp({
       
       // Estado Fase 4
       studentSearchQuery,
+      talkSearchQuery,
       searchResults,
+      filteredTalks,
       showCreateTalkModal,
       newTalk,
       formErrors,

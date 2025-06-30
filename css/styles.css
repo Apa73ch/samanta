@@ -334,7 +334,7 @@ a:hover {
   padding: var(--space-3) var(--space-4);
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
-  color: var(--color-text);
+  color: var(--color-gray-800);
   background-color: var(--color-white);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--border-radius-md);
@@ -349,7 +349,7 @@ a:hover {
 }
 
 .input::placeholder {
-  color: var(--color-text-light);
+  color: var(--color-gray-500);
 }
 
 /* Cards */
@@ -1822,11 +1822,17 @@ a:hover {
 
 .section-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-4);
   margin-bottom: var(--space-6);
   padding-bottom: var(--space-4);
   border-bottom: 2px solid var(--color-border-light);
+}
+
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .section-header h3 {
